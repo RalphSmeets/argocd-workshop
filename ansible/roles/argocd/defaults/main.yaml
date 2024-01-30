@@ -1,0 +1,61 @@
+cjib_nexus_repository_url: https://nexus3.shs.cjib.minjus.nl/repository
+universe:
+  apps_domain: minikube
+  name: localhost
+
+argocd_helm_repo_name: helm-argo-cd
+argocd_helm_repo_chart: "{{ cjib_nexus_repository_url }}/{{ argocd_helm_repo_name }}"
+argocd_helm_chart_version: 5.27.1
+argocd_helm_chart: "{{ argocd_helm_repo_name }}/argo-cd"
+
+argocd_namespace: argocd
+argocd_alias: argocd
+
+argocd_helm_ingress: true
+argocd_default_admin_password: "$2a$10$FSF0dCoIYmXtTQevEFqFC.Y011zP75GjjNw.XUErGSCAG./cRFJKa"
+
+## For the time being, reuse the jenkins key to connect to bitbucket
+## argocd_svc_key: "{{ jenkins_svc_key }}"
+argocd_projects:
+  - name: dev
+    namespace: dev
+    cluster: https://kubernetes.default.svc
+    repo_url: ssh://git@bitbucket.shs.cjib.minjus.nl:7999/cdtool/argocd-demo.git
+  - name: i-test
+    namespace: "i-test-*"
+    cluster: https://kubernetes.default.svc
+    repo_url: ssh://git@bitbucket.shs.cjib.minjus.nl:7999/cdtool/argocd-demo.git
+  - name: pro
+    namespace: pro
+    cluster: https://kubernetes.default.svc
+    repo_url: ssh://git@bitbucket.shs.cjib.minjus.nl:7999/cdtool/argocd-demo.git
+  - name: shs
+    namespace: shs
+    cluster: https://kubernetes.default.svc
+    repo_url: ssh://git@bitbucket.shs.cjib.minjus.nl:7999/cdtool/argocd-demo.git
+
+# For this demo we use one repository with two different paths. But normally you would have at
+# least one repository per environment
+argocd_applications:
+  - name: dev-root
+    project: dev
+    repo_url: ssh://git@bitbucket.shs.cjib.minjus.nl:7999/cdtool/argocd-demo.git
+    repo_path: environments/dev
+    namespace: dev
+    cluster: https://kubernetes.default.svc
+
+  - name: pro-root
+    project: pro
+    repo_url: ssh://git@bitbucket.shs.cjib.minjus.nl:7999/cdtool/argocd-demo.git
+    repo_path: environments/pro
+    namespace: pro
+    cluster: https://kubernetes.default.svc
+
+argocd_application_sets:
+  - name: shs-helm
+    type: helm
+    project: shs
+    repo_url: sh://git@bitbucket.shs.cjib.minjus.nl:7999/cdtool/argocd-demo.git
+    git-files: "environments/shs/**/application.yaml"
+    namespace: shs
+    cluster: https://kubernetes.default.svc

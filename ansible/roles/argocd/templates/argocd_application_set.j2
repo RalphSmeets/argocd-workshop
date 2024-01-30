@@ -1,0 +1,63 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ application_set.name }}-argocd-repository
+  namespace: {{ argocd_namespace }}
+  labels:
+    argocd.argoproj.io/secret-type: repository
+type: Opaque
+data:
+  name: {{ application_set.name | b64encode }}
+  sshPrivateKey: {{ argocd_bitbucket_svc_key | b64encode }}
+  type: Z2l0
+  url: >-
+    {{ application_set.repo_url | b64encode }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ application_set.name }}
+  namespace: {{ argocd_namespace }}
+spec:
+  generators:
+    - git:
+       repoUrl: {{ application_set.repo_url }}
+       revision: HEAD
+       files:
+         - path: {{ application_set.git-files }}
+  template:
+    metadata:
+      name: "{{ path.basenameNormalized }}"
+    spec:
+      project: {{ application_set.project }}
+      destination:
+        server: {{ application_set.cluster }}
+        namespace: {{ application_set.namespace }}
+ {% if application_set.type == "helm" %}
+      sources:
+        - repoURL: {{ chart.repo_url }}
+          chart: {{ chart.name }}
+          targetRevision: {{ chart.version }}
+          helm:
+            valueFiles:
+              - $values/{{ path }}/values.yaml
+        - repoURL: {{ application_set.repo_url }}
+          ref: values
+
+{% else %}
+      source:
+        repoURL: {{ application_set.repo_url }}
+        targetRevision: HEAD
+        path: {{ path.basename }}/overlays/{{ path[1] }}
+        kustomize:
+          images:
+            - 'service={{ image.repo }}:{{ image.tag }}'
+          commonLabels:
+            app-version: {{ image.tag }}
+{% endif %}
+      syncPolicy:
+        automated:
+          prune: true
+           selfHeal: true
+
